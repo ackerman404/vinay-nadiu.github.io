@@ -221,9 +221,17 @@
             color: #666;
             font-size: 1.1rem;
             border: 1px solid #e1e5e9;
+            overflow: hidden;
         }
 
         .project-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .project-video img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -491,16 +499,16 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="projectVideo">Project Video</label>
+                        <label for="projectVideo">Project Video/GIF</label>
                         <div class="upload-area" onclick="document.getElementById('projectVideo').click()">
-                            <div class="upload-icon">📹</div>
-                            <p>Click to upload project video</p>
-                            <p style="font-size: 0.9rem; color: #666;">Supported formats: MP4, WebM, MOV</p>
+                            <div class="upload-icon">🎬</div>
+                            <p>Click to upload project video or GIF</p>
+                            <p style="font-size: 0.9rem; color: #666;">Supported formats: MP4, WebM, MOV, GIF</p>
                         </div>
-                        <input type="file" id="projectVideo" name="projectVideo" accept="video/*" style="display: none;">
+                        <input type="file" id="projectVideo" name="projectVideo" accept="video/*,image/gif" style="display: none;">
                         <div id="currentVideo" class="hidden" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 8px; border: 1px solid #667eea;">
                             <p style="margin: 0; color: #333; font-size: 0.9rem;">
-                                📹 Current video: <span id="currentVideoName"></span>
+                                🎬 Current media: <span id="currentVideoName"></span>
                                 <button type="button" onclick="clearCurrentVideo()" style="margin-left: 10px; background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.8rem;">✕ Remove</button>
                             </p>
                         </div>
@@ -604,9 +612,9 @@
             
             // Reset upload area
             document.querySelector('.upload-area').innerHTML = `
-                <div class="upload-icon">📹</div>
-                <p>Click to upload project video</p>
-                <p style="font-size: 0.9rem; color: #666;">Supported formats: MP4, WebM, MOV</p>
+                <div class="upload-icon">🎬</div>
+                <p>Click to upload project video or GIF</p>
+                <p style="font-size: 0.9rem; color: #666;">Supported formats: MP4, WebM, MOV, GIF</p>
             `;
         }
 
@@ -700,10 +708,13 @@
             const file = e.target.files[0];
             if (file) {
                 const uploadArea = document.querySelector('.upload-area');
+                const isGif = file.type === 'image/gif';
+                const fileType = isGif ? 'GIF' : 'Video';
+                
                 uploadArea.innerHTML = `
                     <div class="upload-icon">✅</div>
-                    <p>Video selected: ${file.name}</p>
-                    <p style="font-size: 0.9rem; color: #666;">Click to change video</p>
+                    <p>${fileType} selected: ${file.name}</p>
+                    <p style="font-size: 0.9rem; color: #666;">Click to change ${fileType.toLowerCase()}</p>
                 `;
             }
         });
@@ -713,7 +724,7 @@
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            const videoFile = formData.get('projectVideo');
+            const mediaFile = formData.get('projectVideo');
             const editingId = formData.get('editingProjectId');
             
             const projectData = {
@@ -727,13 +738,15 @@
                 // Update existing project
                 const projectIndex = projects.findIndex(p => p.id == editingId);
                 if (projectIndex !== -1) {
-                    // Keep existing video if no new video uploaded
-                    if (videoFile && videoFile.size > 0) {
-                        projectData.video = URL.createObjectURL(videoFile);
-                        projectData.videoName = videoFile.name;
+                    // Keep existing media if no new media uploaded
+                    if (mediaFile && mediaFile.size > 0) {
+                        projectData.video = URL.createObjectURL(mediaFile);
+                        projectData.videoName = mediaFile.name;
+                        projectData.isGif = mediaFile.type === 'image/gif';
                     } else if (editingProject) {
                         projectData.video = editingProject.video;
                         projectData.videoName = editingProject.videoName;
+                        projectData.isGif = editingProject.isGif;
                     }
                     
                     projects[projectIndex] = { ...projects[projectIndex], ...projectData };
@@ -744,8 +757,9 @@
                 const project = {
                     id: Date.now(),
                     ...projectData,
-                    video: videoFile && videoFile.size > 0 ? URL.createObjectURL(videoFile) : null,
-                    videoName: videoFile && videoFile.size > 0 ? videoFile.name : null
+                    video: mediaFile && mediaFile.size > 0 ? URL.createObjectURL(mediaFile) : null,
+                    videoName: mediaFile && mediaFile.size > 0 ? mediaFile.name : null,
+                    isGif: mediaFile && mediaFile.size > 0 ? mediaFile.type === 'image/gif' : false
                 };
                 projects.push(project);
                 alert('Project added successfully!');
@@ -779,11 +793,14 @@
                 <div class="project-card">
                     <div class="project-video">
                         ${project.video ? 
-                            `<video controls>
-                                <source src="${project.video}" type="video/mp4">
-                                Your browser does not support the video tag.
-                            </video>` : 
-                            'No video uploaded'
+                            (project.isGif ? 
+                                `<img src="${project.video}" alt="${project.title}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;">` :
+                                `<video controls autoplay muted loop>
+                                    <source src="${project.video}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>`
+                            ) : 
+                            'No media uploaded'
                         }
                     </div>
                     <div class="project-category">${project.category}</div>
